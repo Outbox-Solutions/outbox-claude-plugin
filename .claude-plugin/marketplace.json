@@ -1,0 +1,18 @@
+{
+  "name": "outbox",
+  "owner": {
+    "name": "Outbox",
+    "email": "support@getoutbox.ai"
+  },
+  "description": "Outbox plugins for Claude Code.",
+  "plugins": [
+    {
+      "name": "outbox-cli",
+      "source": "./outbox-cli",
+      "description": "Manage Outbox agents, workflows, contacts, conversations, and analytics directly from Claude Code.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "keywords": ["outbox", "ai-agents", "workflow", "voice-ai", "crm"]
+    }
+  ]
+}

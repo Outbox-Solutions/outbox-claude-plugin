@@ -60,7 +60,7 @@ importing into the workflow UI.
 In Claude Code, run these three commands:
 
 ```
-/plugin marketplace add outboxsolutions/outbox-claude
+/plugin marketplace add Outbox-Solutions/outbox-claude-plugin
 /plugin install outbox-cli@outbox
 /outbox-cli:outbox-setup
 ```

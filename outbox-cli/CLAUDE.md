@@ -52,8 +52,8 @@ namespace). Three layers — pick in this order:
 
 | Intent | Call |
 |---|---|
-| Recent calls / voice activity | `jarvis_query tool_name="query_threads" args={"type":"voice","period":"weekly","limit":50}` |
-| Recent chats | `jarvis_query tool_name="query_threads" args={"type":"chat","period":"weekly","limit":50}` |
+| Recent calls / voice activity | `jarvis_query tool_name="query_calls" args={"period":"weekly","limit":25}` |
+| Recent chats | `jarvis_query tool_name="query_threads" args={"type":"chat","period":"weekly","limit":25}` |
 | Single call/chat detail (transcript) | `jarvis_query tool_name="get_thread_context" args={"thread_id":"<id>"}` |
 | Search messages by phrase | `jarvis_query tool_name="query_messages" args={"query":"<phrase>","limit":25}` |
 | Tool execution history | `jarvis_query tool_name="query_tool_calls" args={"agent_id":"<id?>","period":"weekly"}` |
@@ -67,6 +67,33 @@ namespace). Three layers — pick in this order:
 - For thread/call/chat detail it's **`thread_id`** — never `call_id`,
   `chat_id`, or `record_id`.
 - The `jarvis_query` wrapper field is **`tool_name`** — never `tool`.
+
+### Call/chat filtering — be aggressive, not exhaustive
+
+`query_calls` and `query_threads` can return thousands of rows. Each row
+costs the user real tokens. **Always filter to the smallest set that
+answers the question.** Default `limit=25`, never raise above 100
+without an explicit user ask, and never auto-paginate to "be thorough".
+
+`query_calls` accepts these filters (combine freely):
+
+| Filter | Values | Use when user says |
+|---|---|---|
+| `agent_id` | UUID | "from <agent>", agent name mentioned |
+| `status` (calls) | `active`, `success`, `unqualified`, `customer-ended`, `agent-ended`, `forwarded`, `callback-booked`, `no-answer`, `error` | "failed" → `error`, "won" → `success`, "no answer" → `no-answer` |
+| `status` (chats) | `active`, `success`, `interrupted` | "interrupted"/"dropped" → `interrupted`, "live" → `active` |
+| `direction` (calls only) | `web`, `inbound`, `outbound` | "inbound", "people called us", "from the widget" |
+| `min_score` / `max_score` | 0–100 | "good ones" → `min_score=70`; "bad calls" → `max_score=40` |
+| `start_date` / `end_date` | `YYYY-MM-DD` | explicit date range — overrides `period` |
+| `period` | `daily`, `weekly`, `monthly` | "today", "this week", "this month" |
+| `page` | 1+ | only on user request — don't auto-page |
+| `limit` | 1–100, default 25 | keep small unless user asks |
+
+If the user's ask is vague ("show me calls"), pick `period=weekly
+limit=25` and offer to narrow — do **not** pull a wider net to be safe.
+
+`query_threads` (chats and mixed) accepts the same filters plus
+`type=chat|voice`. Same discipline applies.
 
 ### When to spawn the outbox-analyst sub-agent
 

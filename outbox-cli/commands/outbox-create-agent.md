@@ -24,14 +24,29 @@ Ask the user (in one message, as a numbered list):
 3. **Voice / persona** — friendly, professional, blunt, etc.
 4. **Initial system prompt** — offer to draft one based on (1)-(3) and have
    them edit, OR let them paste their own.
-5. **Tools** — any specific integrations to enable? (skip if unsure)
+5. **Built-in tools** — show the built-in catalog and let them tick any
+   that fit the agent's job. Multi-select; defaults to none. Catalog:
+   `send_sms`, `send_email`, `book_ai_callback`, `create_opportunity`,
+   `update_opportunity`, `update_contact`, `add_tag`, `remove_tag`,
+   `add_to_workflow`, `remove_from_workflow`. Skip if unsure — they can
+   add later via `/outbox-attach-tool`.
 
 ### Create
 
 Once all inputs are confirmed, call `mcp__outbox__create_record` with
-`resource="agents"` and the gathered data. On success:
+`resource="agents"` and the gathered data.
+
+If the user picked any built-in tools, attach each one after the agent is
+created — call `mcp__outbox__run_operation operation="agent_tools.create"`
+with body `{"agent_id": "<new-id>", "type": "builtin", "builtin_key":
+"<key>", "is_async": true}`. For built-ins with config fields the user
+also wants pre-filled (e.g. a default pipeline for `create_opportunity`),
+defer to `/outbox-attach-tool <new-id>` rather than gathering them inline
+— scaffold creation should stay quick.
+
+On success:
 
 - Show the new agent's id.
-- Offer next steps: `Want me to add a tool, attach a knowledge file, or test it with a call?`
+- Offer next steps: `Want me to attach more tools, attach a knowledge file, or test it with a call?`
 
 If validation fails, surface the field-level errors and offer to retry.

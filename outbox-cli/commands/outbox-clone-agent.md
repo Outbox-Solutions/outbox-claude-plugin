@@ -27,7 +27,9 @@ Create `agents/<agent-name-slug>/` with:
 
 - `agent.json` — the full agent record (pretty-printed)
 - `system_prompt.md` — extracted system prompt as a separate editable file
-- `tools.json` — tool list
+- `tools.json` — tool list. Preserve each row's `type`, and for built-ins
+  preserve the `builtin_key` and `config` fields verbatim — `/outbox-push-agent`
+  uses those to reattach.
 - `files.json` — file metadata
 - `README.md` — short note explaining how to push edits back via
   `/outbox-push-agent` or `mcp__outbox__update_record`

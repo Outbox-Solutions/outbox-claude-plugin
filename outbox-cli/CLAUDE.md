@@ -68,6 +68,46 @@ namespace). Three layers — pick in this order:
   `chat_id`, or `record_id`.
 - The `jarvis_query` wrapper field is **`tool_name`** — never `tool`.
 
+### Built-in agent tools
+
+Every agent supports a fixed catalog of first-party tools that don't need
+external auth or a custom HTTP endpoint. Attach via `agent_tools.create`
+with `type: "builtin"` and `builtin_key`:
+
+| Key | What it does |
+|---|---|
+| `send_sms` | SMS the contact (or a passed number) |
+| `send_email` | Email the contact (or a passed address) |
+| `book_ai_callback` | Queue a future AI callback for the contact |
+| `create_opportunity` | Create a CRM opportunity for the contact |
+| `update_opportunity` | Update the contact's latest matching opportunity |
+| `update_contact` | Patch fields on the current contact |
+| `add_tag` / `remove_tag` | Add/remove tags on the contact |
+| `add_to_workflow` / `remove_from_workflow` | Enroll/remove from workflows |
+
+Wire format for attaching:
+
+```
+mcp__outbox__run_operation operation="agent_tools.create" body={
+  "agent_id": "<uuid>",
+  "type": "builtin",
+  "builtin_key": "send_sms",
+  "is_async": true,
+  "config": { ...optional default values... }
+}
+```
+
+The backend derives `name`, `mcp_tool`, `description`, and `schema` from
+the catalog — don't pass those. The optional `config` blob holds default
+values the LLM falls back to when it doesn't pick a value at runtime
+(e.g. `from_number` for `send_sms`, `pipeline_id`/`stage_id` for
+opportunity tools, `workflow_id` for workflow tools). All config fields
+are optional — skip them when the user wants the LLM to choose live.
+
+The `agent_tools.list` response marks built-ins with `type: "builtin"`
+and includes a `builtin_key` plus `display_name`. Render those as e.g.
+`Send SMS (built-in)` in tool listings.
+
 ### Call/chat filtering — be aggressive, not exhaustive
 
 `query_calls` and `query_threads` can return thousands of rows. Each row

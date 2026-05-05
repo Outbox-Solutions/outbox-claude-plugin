@@ -27,7 +27,16 @@ Push edits from a previously cloned agent back to Outbox.
 4. Call `mcp__outbox__update_record` with `resource="agents"`, the id, and
    the merged payload (local system prompt overrides server, plus any other
    tracked field changes).
-5. On success, summarize what changed in one line.
+5. If `tools.json` changed, reconcile tools separately from the agent
+   record — `update_record` on `agents` doesn't touch the tool list.
+   For each added or modified tool, call `agent_tools.create` (it
+   upserts when an `id` is supplied). For built-ins, the body is
+   `{"agent_id": "<id>", "type": "builtin", "builtin_key": "<key>",
+   "is_async": true, "config": {...}}` — don't send `name`,
+   `description`, or `schema`; the backend fills those from the
+   catalog. For deletions, call `agent_tools.delete`.
+6. On success, summarize what changed in one line (record fields +
+   tool diffs).
 
 If the server-side state has drifted significantly since the clone, surface
 that and offer to re-clone instead of overwriting.

@@ -17,8 +17,9 @@ In parallel:
 
 - `mcp__outbox__get_record resource="agents" record_id="$ARGUMENTS"` — full
   agent record
-- `mcp__outbox__jarvis_query tool_name="search_tools"
-  args={"agent_id": "$ARGUMENTS"}` — attached tools
+- `mcp__outbox__run_operation operation="agent_tools.list"
+  path_params={"agent_id": "$ARGUMENTS"}` — attached tools (returns each
+  tool's `type`, plus `builtin_key` and `display_name` for built-ins)
 
 ### Render
 
@@ -27,7 +28,9 @@ In parallel:
 
 **Created:** <date>
 **Voice / model:** <relevant fields>
-**Tools attached:** <count> — <comma list of names>
+**Tools attached:** <count> — <comma list>. For `type: "builtin"` rows,
+show `<display_name>` (built-in) e.g. `Send SMS (built-in)`. For other
+types, show the tool's `name`.
 
 ## System prompt
 <show the prompt verbatim, in a code block>

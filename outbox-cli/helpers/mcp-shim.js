@@ -58,7 +58,7 @@ const child = spawn(
     'mcp-remote@latest',
     REMOTE_URL,
     '--header',
-    `Authorization:Bearer ${token}`,
+    `Authorization: Bearer ${token}`,
   ],
   { stdio: 'inherit' }
 );

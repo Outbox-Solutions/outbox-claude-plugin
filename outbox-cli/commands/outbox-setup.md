@@ -18,9 +18,17 @@ Open with one short message:
 
 ### Step 1 — check sign-in status
 
-Try `mcp__outbox__show_client`. Three cases:
+Try `mcp__outbox__show_client`. Four cases — **be strict about which
+one you're in before triggering sign-in**, since a sign-in mints a new
+token and invalidates the previous session, and re-signing on a transport
+glitch causes a re-auth death spiral.
 
-**A. Returns 401 / missing auth** — they haven't signed in yet.
+**A. Explicit auth failure from the Outbox API** — the response body is
+a JSON error with `code` of `INVALID_TOKEN`, `MISSING_AUTH`,
+`EXPIRED_TOKEN`, or `REVOKED_SESSION` (or the HTTP status is 401 *and*
+the body clearly originates from the Outbox API, not a proxy/transport).
+Only in this case: they actually need to sign in.
+
 Tell them:
 > First, let's sign you in. I'll ask for your email and password — they go
 > directly to Outbox to issue you a session token.
@@ -33,6 +41,15 @@ After saving, **stop and tell them to restart Claude Code**:
 > Restart Claude Code now (`/exit` then `claude`) so the new env var
 > loads, then come back and run `/outbox-setup` again. I'll pick up where
 > we left off.
+
+**A′. Transport / MCP failure** — connection refused, ENOTFOUND, MCP
+server unreachable, malformed response, "tool not found", or any error
+that didn't come from the Outbox API itself. **Do not run sign-in.**
+Surface the raw error and stop:
+> The plugin can't reach the Outbox MCP server. Here's what came back:
+> `<raw error>`. This isn't a sign-in problem — try `/reload-plugins`,
+> or restart Claude Code if that doesn't help. If it persists, share the
+> error above.
 
 **B. Returns 200 with no `effective_company_id`** — signed in but no client picked.
 > You're signed in. Now let's pick a client to work with.
@@ -114,6 +131,11 @@ End there. Don't ask "what would you like to do next?" — let them drive.
   briefing — the user picks what to do next.
 - **Don't loop back to Step 1 if Step 2 fails.** A failure in client
   pickup means something's wrong with their account, not the auth.
+- **Never trigger sign-in on an ambiguous failure.** Only Case A (explicit
+  Outbox API auth error code) warrants re-authenticating. Every sign-in
+  mints a new session token and invalidates the previous one — re-signing
+  on a transport blip will cascade into a multi-step death spiral as the
+  bridge keeps reading the token that was just invalidated.
 - If `mcp__outbox__show_client` itself errors (network, MCP unreachable),
   surface the raw error — they need to know the plugin can't reach the
   Outbox server, and that's a different problem from sign-in.

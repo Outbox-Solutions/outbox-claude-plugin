@@ -5,6 +5,32 @@ description: Sign in to Outbox with your email and password
 You're guiding the user through a one-time login so the Outbox MCP
 connection works.
 
+### Step 0 — check for an existing valid session (do this first, always)
+
+Every successful login mints a brand-new session token and may invalidate
+the previous one. So before asking for credentials, see if the user is
+already signed in with a working token:
+
+1. Read `~/.outbox/credentials.json`. If it doesn't exist, skip to Step 1.
+2. If it exists and `expires_at` parses to a date in the future:
+   - Try `mcp__outbox__show_client` (or, if MCP isn't available in this
+     context, `curl -s -H "Authorization: Bearer <token>"
+     https://api.theaiagentshub.com/auth/plugin/whoami/`).
+   - If that succeeds, the existing token is still good. Tell the user:
+     > You're already signed in as `<email>` (token valid until
+     > `<expires_at>`). No need to re-authenticate.
+     >
+     > If you want to force a fresh session anyway (e.g. you suspect the
+     > token is compromised), say so and I'll continue.
+   - Stop unless they explicitly ask to re-issue.
+   - If `whoami` returns an explicit auth error (`INVALID_TOKEN`,
+     `EXPIRED_TOKEN`, `REVOKED_SESSION`), continue to Step 1 — the
+     stored token is dead.
+   - If `whoami` fails with a transport error (network unreachable,
+     connection refused), **do not continue** — surface the raw error.
+     Re-issuing won't help if the API isn't reachable, and it'll just
+     burn the user's existing session.
+
 ### Step 1 — collect credentials
 
 Ask the user (in two separate messages):

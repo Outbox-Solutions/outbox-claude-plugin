@@ -146,6 +146,25 @@ The sub-agent has a hard rule: it must call at least one MCP tool
 before responding. If a sub-agent ever returns analysis with `0 tool
 uses`, treat the response as fabricated and re-do inline.
 
+## Building workflows — call-chase rule
+
+When a user wants a multi-dial / redial chase ("call, wait, call again to
+beat DND"), do **not** build repeated `send_ai_call → wait(time) →
+if_else(call_status == did-not-answer)` blocks. Two platform features make
+that unnecessary and make the workflow flat instead of hundreds of actions:
+
+- Set `stop_on_response: true` on the workflow root — an answered call or an
+  inbound SMS reply auto-unenrolls the contact, so later dials never fire.
+  This replaces every "did they pick up?" if_else.
+- Put `wait { wait_type: "call_end" }` after each `send_ai_call` — it blocks
+  until the call truly ends (not a fixed timer that misfires mid-call), then
+  the final `call_status`/`call_score` is reliable for any real branching.
+- Use a `wait { wait_type: "time" }` only for the intended gap *between*
+  attempts. Put post-call routing (score branches, error tags) in a separate
+  `ai_call_completed`-triggered workflow, not inline.
+
+Full detail lives in `/outbox-create-workflow`.
+
 ## Documentation lookup (mcp__outbox-docs__*)
 
 The plugin also connects to the official Outbox documentation MCP at

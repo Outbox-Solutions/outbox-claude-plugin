@@ -43,3 +43,12 @@ Confirm what changed in one short line.
 - Don't restructure the entire workflow unless the user asked for it.
   Apply the smallest diff that satisfies the request.
 - Don't push without showing the diff for non-trivial changes.
+
+### Watch for the call-chase anti-pattern
+
+If the fetched workflow is a redial sequence built as repeated
+`send_ai_call → wait(time) → if_else(call_status == did-not-answer) → repeat`,
+flag it. The right shape is `stop_on_response: true` at the root plus a
+`wait { wait_type: "call_end" }` after each call, which removes the need for
+the per-call if_else branches entirely. See the "Call-chase" guidance in
+`/outbox-create-workflow`. Offer the rebuild; don't force it.

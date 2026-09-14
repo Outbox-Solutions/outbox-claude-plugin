@@ -22,14 +22,23 @@ Ask the user (in one message, as a numbered list):
 1. **Purpose** — what does this agent do? (1-2 sentences)
 2. **Channel** — call, chat, or both?
 3. **Voice / persona** — friendly, professional, blunt, etc.
-4. **Initial system prompt** — offer to draft one based on (1)-(3) and have
+4. **Timezone** — where the calls happen, as an IANA name. It drives bookings
+   and free-slot lookups, so the default of UTC is wrong for nearly everyone.
+5. **Initial system prompt** — offer to draft one based on (1)-(4) and have
    them edit, OR let them paste their own.
-5. **Built-in tools** — show the built-in catalog and let them tick any
+6. **Built-in tools** — show the built-in catalog and let them tick any
    that fit the agent's job. Multi-select; defaults to none. Catalog:
    `send_sms`, `send_email`, `book_ai_callback`, `create_opportunity`,
    `update_opportunity`, `update_contact`, `add_tag`, `remove_tag`,
    `add_to_workflow`, `remove_from_workflow`. Skip if unsure — they can
    add later via `/outbox-attach-tool`.
+
+Set `model` yourself rather than asking: `gpt-4.1` for a call agent, `gpt-5.4`
+for a chat one.
+
+The `outbox-agents` skill covers the rest — which built-ins belong on an agent
+and which belong in a workflow, and why booking is a calendar integration
+rather than a tool you attach. Follow it.
 
 ### Create
 

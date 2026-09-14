@@ -49,6 +49,11 @@ The catalog is stable. Show this list, marking any already-attached entries
 | `add_to_workflow` | Add to Workflow | Enroll the contact into a workflow |
 | `remove_from_workflow` | Remove from Workflow | Pull the contact out of active workflow enrollments |
 
+The last four are bookkeeping and usually belong in a workflow triggered by the
+call rather than on the agent. Booking is not on this list and is not a tool
+type to create: it comes from a connected calendar. The `outbox-agents` skill
+covers both.
+
 Ask which one(s) to attach.
 
 **Gather config defaults.** Some built-ins have config fields that pre-fill

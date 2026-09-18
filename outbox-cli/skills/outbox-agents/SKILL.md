@@ -59,8 +59,9 @@ than guessing an id.
 **Billing.** A speech-to-speech minute costs 2¢/min more than a pipeline one,
 on top of the company's call rate. Say so if asked to switch an agent over.
 
-**What it will not do.** No background sound, no transcriber settings, no
-separate TTS voice, no temperature or max-tokens. Tools are limited to
+**What it will not do.** No transcriber settings, no separate TTS voice, no
+temperature or max-tokens. Background sound plays only while the agent is
+speaking, not continuously under the call the way it does on our own engine. Tools are limited to
 `function`, `apiRequest`, `endCall`, `dtmf` and `transferCall` — a voicemail
 tool on a Live-1 agent is rejected and takes the whole call with it.
 - **`timezone`** — the timezone the calls happen in, as an IANA name

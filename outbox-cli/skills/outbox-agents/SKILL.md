@@ -23,7 +23,46 @@ Set both. Neither has a sensible default for a real agent.
 
 - **`model`** — `gpt-4.1` for a voicebot, `gpt-5.4` for a chatbot. Do not leave
   it blank and do not reach for a cheaper open model; a cold caller on a small
-  model loses the thread of its own script.
+  model loses the thread of its own script. For a voicebot that has to sound
+  human, see GPT Live-1 below.
+
+### GPT Live-1 (speech-to-speech)
+
+A pipeline voicebot transcribes, thinks, then speaks, and the joins are
+audible. Live-1 hears and speaks directly, so it interrupts, hesitates and
+changes tone the way a person does. Three tiers, all `provider: openai`:
+
+| Model | Character |
+|---|---|
+| `gpt-live-1-terra` | Balanced. The default, and the one to pick unless asked |
+| `gpt-live-1-sol` | Deepest reasoning, slower |
+| `gpt-live-1-luna` | Fastest and cheapest |
+
+`gpt-live-1` on its own is the legacy id and resolves to Terra.
+
+**It takes two prompts, not one.** Send them as `prompt_parts`:
+
+- `voice` — everything the agent needs to run the call: role, script, FAQs,
+  objections, tone. The speaking model reads this and handles the whole
+  conversation.
+- `backend` — the tools only: which to run, when, and what each needs. A
+  second model behind the voice reads this, and every tool call is made from
+  there.
+
+Put the personality in `voice`. A Live-1 agent with its script in `backend`
+sounds like it is reading from another room, because it is.
+
+**Voice.** 22 named voices, `provider: openai-live`. `ripple` (Australian
+male) is the default; `quartz` is Australian female. Use `voices.list` rather
+than guessing an id.
+
+**Billing.** A speech-to-speech minute costs 2¢/min more than a pipeline one,
+on top of the company's call rate. Say so if asked to switch an agent over.
+
+**What it will not do.** No background sound, no transcriber settings, no
+separate TTS voice, no temperature or max-tokens. Tools are limited to
+`function`, `apiRequest`, `endCall`, `dtmf` and `transferCall` — a voicemail
+tool on a Live-1 agent is rejected and takes the whole call with it.
 - **`timezone`** — the timezone the calls happen in, as an IANA name
   (`Australia/Perth`). It is what free-slot lookups and bookings are computed
   against, so `UTC` on an Australian business books 3am appointments. Ask if

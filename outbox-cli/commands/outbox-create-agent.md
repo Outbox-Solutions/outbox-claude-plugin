@@ -34,7 +34,10 @@ Ask the user (in one message, as a numbered list):
    add later via `/outbox-attach-tool`.
 
 Set `model` yourself rather than asking: `gpt-4.1` for a call agent, `gpt-5.4`
-for a chat one.
+for a chat one. If they ask for the agent to sound human, or say the current
+one sounds robotic, offer `gpt-live-1-terra` — speech-to-speech, 2c/min more,
+and it takes two prompts instead of one. The `outbox-agents` skill has the
+detail.
 
 The `outbox-agents` skill covers the rest — which built-ins belong on an agent
 and which belong in a workflow, and why booking is a calendar integration

@@ -56,7 +56,8 @@ happened. It takes **no filters**; everything is `config`:
 | `weekdays` | list of `0`-`6` where **0 is Monday**, for `weekly` |
 | `day_of_month` | `1`-`28`, for `monthly` |
 | `timezone` | falls back to the workflow's, then the company's |
-| `target` | `none` (one run, no contact) or `contacts` (one run per contact) |
+| `target` | `none` (one run, no contact), `contacts` (one run per contact) or `plugin` (one run per matching record in a connected plugin — see below) |
+| `plugin` | with `target: plugin`: `{plugin: <slug>, entity, status, older_than_days, newer_than_days, contact_role?, once_per_entity?, max_records?}` |
 | `tags` | with `target: contacts`, only contacts carrying one of these |
 | `exclude_dnd` | defaults true |
 | `max_contacts` | defaults 500 |
@@ -68,6 +69,48 @@ Pick `target` deliberately. A report, a sync or an outbound webhook wants
 `none`. "Chase quotes older than three days" wants `contacts`, and anything
 that sends to a person needs it, because contact actions with no contact do
 nothing.
+
+## Plugin triggers (Ascora, Mindbody, ...)
+
+A plugin is a system the business runs its day in — job management for a
+trade, the booking system for a studio — connected under Settings → Plugins.
+Once connected its events can start workflows and its records can be read.
+Nothing about a plugin is hard-coded here: **call `plugins.list` to see what
+is connected and `plugins.reference` for the slug before writing a trigger.**
+The reference lists the events, the filters each event accepts and their
+values, the contact roles, the if/else fields and the template keys.
+
+`plugin_event` fires in real time from the system's webhook. `config.plugin`
+(the slug) and `config.event` are required. `config.contact_role` chooses who
+is enrolled, from the roles the plugin declares — Ascora has `site` (the
+person on the job) and `billing` (whoever pays; use it for quotes and
+invoices). `config.once_per_entity: true` stops the same record starting the
+workflow twice. `filters` may only carry the keys the plugin declares for that
+event; anything else is refused on save.
+
+A `schedule` trigger with `target: plugin` searches the system on its cadence
+instead of waiting to be told: "every weekday at 9, Ascora quotes sent 3-30
+days ago still awaiting a reply" is `config.plugin = {plugin: 'ascora',
+entity: 'quotes', status: 'SENT-TO-CUSTOMER', older_than_days: 3,
+newer_than_days: 30, contact_role: 'billing', once_per_entity: true}`. The
+entities and statuses a plugin can scan are in its reference.
+
+Either way the execution carries the record. Templates read it as
+`{{<slug>.<key>}}` — `{{ascora.job_number}}`, `{{ascora.quote_value}}`,
+`{{mindbody.class_name}}`. An `if_else` tests `<slug>.<key>` — fields marked
+**live** in the reference (`ascora.job_status`, `ascora.quote_status`) are
+re-read from the system when the branch runs, which is what makes "wait 3
+days, then only chase if the quote is still unanswered" correct.
+
+Before switching a plugin workflow on, dry-test it: `plugins.simulate` with
+`{event, payload}` or an `event_id` from `plugins.events` reports which
+workflows would start and why the others would not, and sends nothing.
+
+The plugin's actions are ordinary tools (`run_module`) — for Ascora: Log
+Enquiry, Find Customer, Create Job (API), Get Job, Find Jobs, Get Quote, Update
+Quote Status, Add Note, Update Contact. "Book in a new lead" is Find Customer →
+Create Job (API) → Add Note; "they said yes to the quote" is Update Quote
+Status `WON`, which makes Ascora create the job.
 
 ## Branching, when you genuinely need it
 

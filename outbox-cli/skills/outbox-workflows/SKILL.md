@@ -70,47 +70,59 @@ Pick `target` deliberately. A report, a sync or an outbound webhook wants
 that sends to a person needs it, because contact actions with no contact do
 nothing.
 
-## Plugin triggers (Ascora, Mindbody, ...)
+## Plugins: the systems a business runs its day in
 
-A plugin is a system the business runs its day in — job management for a
-trade, the booking system for a studio — connected under Settings → Plugins.
-Once connected its events can start workflows and its records can be read.
-Nothing about a plugin is hard-coded here: **call `plugins.list` to see what
-is connected and `plugins.reference` for the slug before writing a trigger.**
-The reference lists the events, the filters each event accepts and their
-values, the contact roles, the if/else fields and the template keys.
+A plugin is a connected outside system — job management, a booking system,
+a property CRM — under Settings → Plugins. Once connected its events can
+start workflows, its records can be searched on a schedule, its fields can
+be tested in a branch and its tools can be run. Which systems exist, and
+what each can do, is not written here and changes as plugins are added:
+**look it up every time.**
 
-`plugin_event` fires in real time from the system's webhook. `config.plugin`
-(the slug) and `config.event` are required. `config.contact_role` chooses who
-is enrolled, from the roles the plugin declares — Ascora has `site` (the
-person on the job) and `billing` (whoever pays; use it for quotes and
-invoices). `config.once_per_entity: true` stops the same record starting the
-workflow twice. `filters` may only carry the keys the plugin declares for that
-event; anything else is refused on save.
+1. `plugins.list` — every plugin, and which are connected on this company.
+2. `plugins.reference` for the slug — everything you need before writing
+   anything against it: `events` (with each one's default contact role),
+   `filters` (which events each applies to, and their values; account-specific
+   lists arrive in `dynamic_choices`), `roles`, `condition_fields` (those
+   marked `live` are re-read from the system when the branch runs),
+   `scan_entities` with their statuses, `context_keys` (the template keys),
+   `tools` (this company's instances of the plugin's tools, each with its
+   `module_instance_id` and variables) and `guidance` — the plugin's own notes
+   on how its pieces fit together. Read `guidance` before proposing a recipe.
+
+Not connected yet? Ask for the key with `request_user_action` kind
+`collect_secret` and `provider` set to the plugin slug. Saving it connects
+the plugin, creates its tools and syncs its webhooks; you never see the key
+and never call `plugins.connect` with one. Then read the reference again —
+`tools` and `dynamic_choices` are only there once it is connected.
+
+**Triggering.** `plugin_event` fires in real time from the system's webhook:
+`config.plugin` (the slug) and `config.event` are required,
+`config.contact_role` picks who is enrolled from the reference's `roles`,
+`config.once_per_entity: true` stops one record starting the workflow twice.
+`filters` may only carry the keys the reference declares for that event;
+anything else is refused on save.
 
 A `schedule` trigger with `target: plugin` searches the system on its cadence
-instead of waiting to be told: "every weekday at 9, Ascora quotes sent 3-30
-days ago still awaiting a reply" is `config.plugin = {plugin: 'ascora',
-entity: 'quotes', status: 'SENT-TO-CUSTOMER', older_than_days: 3,
-newer_than_days: 30, contact_role: 'billing', once_per_entity: true}`. The
-entities and statuses a plugin can scan are in its reference.
+instead of waiting to be told — "every weekday at 9, records in status X that
+are 3-30 days old" is `config.plugin = {plugin: <slug>, entity, status,
+older_than_days: 3, newer_than_days: 30, contact_role, once_per_entity: true}`
+with `entity` and `status` taken from the reference's `scan_entities`.
 
 Either way the execution carries the record. Templates read it as
-`{{<slug>.<key>}}` — `{{ascora.job_number}}`, `{{ascora.quote_value}}`,
-`{{mindbody.class_name}}`. An `if_else` tests `<slug>.<key>` — fields marked
-**live** in the reference (`ascora.job_status`, `ascora.quote_status`) are
-re-read from the system when the branch runs, which is what makes "wait 3
-days, then only chase if the quote is still unanswered" correct.
+`{{<slug>.<key>}}` for any key in `context_keys`; an `if_else` tests
+`<slug>.<key>` for any entry in `condition_fields`. A live field is what
+makes "wait 3 days, then only chase if it is still unanswered" correct.
 
-Before switching a plugin workflow on, dry-test it: `plugins.simulate` with
-`{event, payload}` or an `event_id` from `plugins.events` reports which
-workflows would start and why the others would not, and sends nothing.
+**Reading and acting.** The reference's `tools` are ordinary `run_module`
+actions in a workflow, and `modules.run` calls one now from the chat — how
+you check the system while building (does this customer exist, what state
+is that record in) and how the office asks it questions. Body is the tool's
+variables by name.
 
-The plugin's actions are ordinary tools (`run_module`) — for Ascora: Log
-Enquiry, Find Customer, Create Job (API), Get Job, Find Jobs, Get Quote, Update
-Quote Status, Add Note, Update Contact. "Book in a new lead" is Find Customer →
-Create Job (API) → Add Note; "they said yes to the quote" is Update Quote
-Status `WON`, which makes Ascora create the job.
+**Before switching on.** Dry-test it: `plugins.simulate` with `{event,
+payload}` or an `event_id` from `plugins.events` reports which workflows
+would start and why the others would not, and sends nothing.
 
 ## Branching, when you genuinely need it
 

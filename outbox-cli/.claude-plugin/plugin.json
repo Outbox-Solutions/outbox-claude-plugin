@@ -1,7 +1,7 @@
 {
   "name": "outbox-cli",
   "displayName": "Outbox CLI",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Manage Outbox agents, workflows, contacts, conversations, and analytics directly from Claude Code.",
   "homepage": "https://getoutbox.ai",
   "author": {
@@ -10,10 +10,8 @@
   },
   "mcpServers": {
     "outbox": {
-      "command": "node",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/helpers/mcp-shim.js"
-      ]
+      "type": "http",
+      "url": "https://api.getoutbox.ai/mcp"
     },
     "outbox-docs": {
       "type": "http",

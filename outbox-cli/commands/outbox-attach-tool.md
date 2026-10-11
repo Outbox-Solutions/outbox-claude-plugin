@@ -33,8 +33,10 @@ unless they mention a specific external integration.
 
 ### Path A — Built-in tools
 
-The catalog is stable. Show this list, marking any already-attached entries
-(those with `type: "builtin"` in the agent's tool list) as `[attached]`:
+Fetch the live catalog with `mcp__outbox__run_operation
+operation="agent_tools.builtins"` and show it, marking any already-attached
+entries (those with `type: "builtin"` in the agent's tool list) as
+`[attached]`. If that call fails, fall back to this list:
 
 | Key | Name | What it does |
 |---|---|---|
@@ -63,10 +65,10 @@ needed (run these in parallel after the user picks a tool):
 
 | Built-in | Config field | How to source the value |
 |---|---|---|
-| `send_sms` | `from_number` | `mcp__outbox__list_records resource="phones"` — phone ID |
-| `send_email` | `from_email` | `mcp__outbox__list_records resource="senders"` — verified sender |
+| `send_sms` | `from_number` | `mcp__outbox__list_records resource="phone_numbers"` — phone ID |
+| `send_email` | `from_email` | `mcp__outbox__list_records resource="email_senders"` — verified sender |
 | `book_ai_callback` | `agent_id` | `mcp__outbox__jarvis_query tool_name="list_agents" args={}` (voice agents only) |
-| `book_ai_callback` | `agent_number` | `mcp__outbox__list_records resource="phones"` |
+| `book_ai_callback` | `agent_number` | `mcp__outbox__list_records resource="phone_numbers"` |
 | `create_opportunity` / `update_opportunity` | `pipeline_id`, then `stage_id` | `mcp__outbox__list_records resource="pipelines"`, then list stages on the chosen pipeline |
 | `add_to_workflow` | `workflow_id` | `mcp__outbox__jarvis_query tool_name="list_workflows" args={}` |
 | `remove_from_workflow` | `workflow_ids` | same as above (multi-select) |
@@ -77,7 +79,8 @@ config field is optional defaults, not required.
 **Attach.** For each chosen tool, call:
 
 ```
-mcp__outbox__run_operation operation="agent_tools.create" body={
+mcp__outbox__run_operation operation="agent_tools.create"
+  path_params={"agent_id": "$ARGUMENTS"} body={
   "agent_id": "$ARGUMENTS",
   "type": "builtin",
   "builtin_key": "<key>",
@@ -93,7 +96,7 @@ the catalog — don't pass those.
 
 Render `search_tools` results as a compact list grouped by application.
 Mark already-attached tools with `[attached]`. Ask which to add. For each
-chosen tool, call `agent_tools.create` with `type` matching the tool
+chosen tool, call `agent_tools.create` (with `path_params={"agent_id": ...}`) and `type` matching the tool
 record (typically `mcp` or `custom`) plus any required config — if the
 contract demands fields you don't have, **ask** rather than guessing.
 Don't fabricate API keys.

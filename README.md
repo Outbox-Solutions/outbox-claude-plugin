@@ -48,48 +48,43 @@ importing into the workflow UI.
 ## Requirements
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code) v2.x or later
-- [Node.js](https://nodejs.org) v18 or later (the plugin uses a small
-  Node shim to bridge to the hosted MCP — `npx` ships with Node)
-- An [Outbox](https://getoutbox.ai) account (agency or company)
-- macOS, Linux, or Windows (WSL)
+- An [Outbox](https://getoutbox.ai) account (agency or company) with a
+  password. If you sign in with Google, set one with **Forgot password**
+  on the Outbox sign-in page first.
+
+No Node.js, API key or token file needed.
 
 ---
 
 ## Install (under 2 minutes)
 
-In Claude Code, run these three commands:
+In Claude Code, run:
 
 ```
 /plugin marketplace add Outbox-Solutions/outbox-claude-plugin
 /plugin install outbox-cli@outbox
-/outbox-cli:outbox-setup
 ```
 
-The first run downloads `mcp-remote` via `npx` (~5 seconds) and walks
-you through:
+Then sign in:
 
-1. **Sign in** — paste your Outbox email and password (sent once to the
-   login endpoint, never stored locally)
-2. **Pick a client** — if you're an agency operator, choose which
-   client to start in
-3. **Quick tour** — 30 seconds on the most useful commands
+1. Run `/mcp`
+2. Choose **plugin:outbox-cli:outbox** and select **Authenticate**
+3. Sign in on the Outbox page that opens in your browser, then come back
 
-That's it. The plugin saves a session token to `~/.outbox/credentials.json`
-and you're done. **No Claude Code restart needed.**
+Finish with `/outbox-cli:outbox-setup` to pick a client and take a
+30-second tour.
 
-> Your password is sent **once** to the Outbox login endpoint and never
-> stored locally. What gets saved is a long-lived but revocable session
-> token — revoke it anytime from **Outbox → Settings → Active Sessions**
-> or by running `/outbox-cli:outbox-sign-out`.
+> Your password goes to Outbox in your browser, never into the terminal.
+> Claude Code keeps a token that renews itself and lasts up to 180 days.
+> See or disconnect connected apps any time in **Outbox → Settings →
+> Claude & Codex**, or with `/outbox-cli:outbox-sign-out`.
 
-### Already installed and just need to sign in?
+### Updating from 0.1.x
 
-```
-/outbox-cli:outbox-sign-in
-/reload-plugins
-```
-
-The reload picks up the new token without needing a Claude Code restart.
+Version 0.2 replaces the old terminal sign-in. After updating, run `/mcp`
+→ **plugin:outbox-cli:outbox** → **Authenticate** once. You can delete
+`~/.outbox/credentials.json` and any `OUTBOX_TOKEN` line in your shell
+profile; nothing reads them any more.
 
 ---
 
@@ -103,11 +98,12 @@ with Claude Code built-ins or other plugins.
 | Command | What it does |
 |---|---|
 | `/outbox-cli:outbox-setup` | First-run guided setup — sign in, pick a client, quick tour |
-| `/outbox-cli:outbox-sign-in` | Sign in with email + password |
-| `/outbox-cli:outbox-sign-out` | Revoke the current session token |
+| `/outbox-cli:outbox-sign-in` | Check you're signed in, and how to sign in if not |
+| `/outbox-cli:outbox-sign-out` | Sign out here, or disconnect another device |
 | `/outbox-cli:outbox-whoami` | Show current context — active client, agency, auth source |
 | `/outbox-cli:outbox-clients` | List every client your account can access |
 | `/outbox-cli:outbox-use-client <name>` | Switch the active client |
+| `/outbox-cli:outbox-new-client [name]` | Add a client — blank, or copied from one you've built |
 
 **Agents**
 
@@ -120,6 +116,7 @@ with Claude Code built-ins or other plugins.
 | `/outbox-cli:outbox-attach-tool <agent-id>` | Attach tools from the platform library |
 | `/outbox-cli:outbox-clone-agent <id>` | Pull an agent's config to local files for editing |
 | `/outbox-cli:outbox-push-agent` | Push local edits back to Outbox |
+| `/outbox-cli:outbox-prompt-history <agent>` | Prompt versions, compare, roll back |
 
 **Workflows + campaigns**
 
@@ -149,6 +146,7 @@ with Claude Code built-ins or other plugins.
 |---|---|
 | `/outbox-cli:outbox-senders` | List email senders |
 | `/outbox-cli:outbox-phones` | List phone numbers |
+| `/outbox-cli:outbox-import-contacts <file.csv> [tags]` | Import contacts from a local CSV |
 
 ---
 
@@ -175,9 +173,19 @@ time:
 /outbox-cli:outbox-use-client acme
 ```
 
-The selection persists across Claude Code restarts and is keyed to your
-session token (so two teammates in the same agency don't step on each
-other's active client).
+The selection persists across Claude Code restarts and is kept per
+sign-in, so two teammates in the same agency don't step on each other's
+active client.
+
+Agency admins can also manage clients themselves from here: add one with
+`/outbox-cli:outbox-new-client` (blank, or copied from a client you've
+already built), change a client's limits or plan, and manage client plans
+and white-label settings. Just ask.
+
+### Using Codex instead?
+
+The same Outbox server works in OpenAI Codex. See
+[Connect to Codex](https://docs.getoutbox.ai/codex-connector).
 
 ### Recommended workflow
 
@@ -223,19 +231,14 @@ enough to warrant it.
 
 ## Troubleshooting
 
-### "You're not signed in" after `/outbox-cli:outbox-sign-in`
+### Outbox tools are missing, or calls say "needs authentication"
 
-Run `/reload-plugins`. The plugin needs to re-spawn its MCP shim to
-pick up the new token from `~/.outbox/credentials.json`.
+You're signed out. Run `/mcp`, choose **plugin:outbox-cli:outbox** and
+select **Authenticate**.
 
-If that doesn't fix it, check the file is there and readable:
-
-```bash
-cat ~/.outbox/credentials.json
-```
-
-You should see a JSON object with a `token` field starting with
-`obx_pls_`.
+If sign-in keeps failing, choose **Clear authentication** in the same
+menu, then **Authenticate** again. Changing your Outbox password, or
+disconnecting the app in **Settings → Claude & Codex**, signs you out too.
 
 ### "Plugin not found in any marketplace" on install
 
@@ -247,43 +250,33 @@ Make sure you're using the qualified install syntax:
 
 Not just `/plugin install outbox-cli`.
 
-### MCP shows ✘ failed in `/mcp`
-
-Two common causes:
-
-- **Node.js isn't installed.** Run `node --version` in your terminal.
-  If it errors, install Node 18+ from [nodejs.org](https://nodejs.org).
-- **First-run download is still in progress.** The shim downloads
-  `mcp-remote` via `npx` on the first launch; give it ~10 seconds and
-  try `/reload-plugins`.
-
 ### Slash commands aren't appearing
 
 Run `/reload-plugins` once, then type `/outbox-cli:` and you should see
 the full list in the autocomplete picker.
 
-### "Token is invalid" or 401 errors
+---
 
-Your session was revoked or expired (180-day max lifetime). Run
-`/outbox-cli:outbox-sign-in` again to issue a fresh one.
+## Before anything risky
+
+Deleting things, releasing or buying numbers, bulk SMS/email, launching
+email campaigns, enrolling more than 5 contacts and changing a client's
+billing don't run straight away. Outbox sends back a summary, Claude asks
+you, and it only runs after you say yes.
 
 ---
 
 ## Privacy and security
 
-- Your password is sent **once** to Outbox during `/outbox-cli:outbox-sign-in`
-  and never stored locally.
-- The session token is stored in `~/.outbox/credentials.json` (mode 600,
-  readable only by you) and optionally in `OUTBOX_TOKEN` in your shell
-  profile as a backup.
-- Tokens can be revoked anytime from **Outbox → Settings → Active
-  Sessions** or via `/outbox-cli:outbox-sign-out`.
-- The hosted MCP exchanges your session token for a short-lived JWT on
-  every call, so a leaked token can be cut off immediately by
-  revocation — no waiting for a long-lived JWT to expire.
-- Active-client selection is stored server-side and keyed to your
-  session token, so teammates sharing an agency don't step on each
-  other's context.
+- You sign in on an Outbox page in your browser. Your password never goes
+  through Claude Code.
+- Claude Code holds a token, not your login. It's replaced every hour and
+  lasts up to 180 days.
+- Claude can do what your Outbox login can do, and no more.
+- Disconnect any time from **Outbox → Settings → Claude & Codex**, with
+  `/outbox-cli:outbox-sign-out`, or by changing your password.
+- Active-client selection is stored server-side per sign-in, so teammates
+  sharing an agency don't step on each other's context.
 - All traffic goes over HTTPS to the Outbox MCP endpoint. No
   third-party telemetry.
 
@@ -304,12 +297,9 @@ Your session was revoked or expired (180-day max lifetime). Run
 ├── .claude-plugin/marketplace.json    ← Claude Code marketplace manifest
 ├── outbox-cli/                         ← the plugin
 │   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md                       ← operating instructions for Claude
 │   ├── commands/                       ← slash commands
-│   ├── skills/                         ← auto-trigger skills
-│   ├── agents/                         ← sub-agents
-│   └── helpers/
-│       └── mcp-shim.js                 ← stdio MCP bridge (reads token from ~/.outbox/credentials.json)
+│   ├── skills/                         ← auto-trigger skills (outbox-platform holds the operating instructions)
+│   └── agents/                         ← sub-agents
 └── README.md
 ```
 

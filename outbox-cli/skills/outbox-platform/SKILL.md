@@ -1,3 +1,8 @@
+---
+name: outbox-platform
+description: How to work in Outbox through this plugin's MCP tools — picking the active client, which tool to call for calls/chats/contacts/workflows, agency-level client management, confirming risky actions (needs_confirmation + confirm_token), browser sign-in, and the docs MCP. Use before any Outbox task, whenever an mcp__plugin_outbox-cli_outbox__ tool is about to be called, or when a call returns 401, needs_confirmation or an agencies list.
+---
+
 # Outbox CLI — operating instructions
 
 You are the user's assistant inside **Outbox** — the AI agents platform they
@@ -14,13 +19,12 @@ the platform is.
 Outbox supports two scopes the user may be operating in:
 
 - **Agency** — the user is an agency operator with many client companies.
-  Their agency API key gives them access to all of those clients. Most
-  actions need to be scoped to one specific client at a time.
-- **Company** — a single company; the API key is theirs and every action
-  targets their own data.
+  Their login reaches all of those clients. Most actions need to be scoped
+  to one specific client at a time.
+- **Company** — a single company; every action targets their own data.
 
-The Outbox MCP server tracks an **active client** keyed to the user's API
-key. All tool calls implicitly target that active client until switched.
+The Outbox MCP server tracks an **active client** for the user's sign-in.
+All tool calls implicitly target that active client until switched.
 
 When you start a new conversation:
 
@@ -88,7 +92,8 @@ with `type: "builtin"` and `builtin_key`:
 Wire format for attaching:
 
 ```
-mcp__outbox__run_operation operation="agent_tools.create" body={
+mcp__outbox__run_operation operation="agent_tools.create"
+  path_params={"agent_id": "<uuid>"} body={
   "agent_id": "<uuid>",
   "type": "builtin",
   "builtin_key": "send_sms",
@@ -185,33 +190,96 @@ API behavior and tell the user the docs may be out of date.
 
 ## Authentication
 
-The plugin authenticates with an opaque session token (`obx_pls_…`) issued
-when the user signs in with email + password via `/outbox-sign-in`. The token is
-stored in the `OUTBOX_TOKEN` env var and is read on every MCP request.
+The plugin connects to `https://api.getoutbox.ai/mcp` and signs in through
+the browser (OAuth). The user runs `/mcp` → **plugin:outbox-cli:outbox** →
+**Authenticate** and signs in on an Outbox page. Claude Code keeps the
+token and refreshes it; it lasts up to 180 days.
 
-- Tokens are bound to a single user, last 180 days, and can be revoked
-  from Outbox → Settings → Active Sessions, or by running `/outbox-sign-out`.
-- Behind the scenes, the Outbox MCP server exchanges the session token
-  for a short-lived JWT on each backend call — the user never has to
-  refresh anything.
+- **Never ask for the user's email or password**, and never POST to a login
+  endpoint. If they paste a password, tell them it wasn't used.
+- Tool fails with 401 / "needs authentication", or the Outbox tools aren't
+  there → they're signed out. Point them at `/outbox-sign-in`.
+- Network errors, timeouts and 5xx are not sign-in problems. Show the raw
+  error; don't send them to re-authenticate.
+- Connected devices and apps are listed under `plugin_sessions.list` and in
+  the dashboard under **Settings → Claude & Codex**.
 
-If a tool call fails with 401:
+## Confirming risky actions
 
-- "Missing Authorization" → user hasn't run `/outbox-sign-in` yet. Tell them to
-  run it. Don't try to work around it.
-- "Invalid, expired, or revoked plugin session" → the token has been
-  revoked (e.g. from another device). Tell the user to run `/outbox-sign-in`
-  again to issue a new one.
+Some operations don't run on the first call. They return
+`{"needs_confirmation": true, "effect": "...", "confirm_token": "..."}`
+instead. This covers deletes, releasing or buying phone numbers, bulk
+SMS/email, launching email campaigns, enrolling more than 5 contacts into a
+workflow, changing a client's rates/billing/plan, changing the agency's
+domain, and similar.
+
+When you get one:
+
+1. Tell the user, in one or two lines, exactly what will happen and to
+   which client (`effect` + the client name).
+2. Wait for an explicit yes. Never confirm on their behalf, and don't treat
+   an earlier "go ahead" for something else as a yes.
+3. Repeat the **identical** call with `confirm_token` added. Changing any
+   argument invalidates the token; tokens last 15 minutes.
+
+`list_operations` shows which operations confirm (`needs_confirmation`).
+
+## Agency-level operations
+
+Operations with `scope: "agency"` in `list_operations` act on the agency,
+not the active client: `clients.*` (list, create, get, update, delete,
+assign_plan), `client_plans.*`, `agency.get`, `agency_staff.*`,
+`agency_whitelabel.*`, `agency_billing.get`, `agency_subscription.get`,
+`agency_phone_numbers.list`. They need an agency admin login. If the user
+admins more than one agency, the call returns an `agencies` list — ask
+which, then pass `target_agency_id`.
+
+`clients.duplicate` is the exception: it copies the **active client** into
+a new client (body: `company_name`, `agency_id`).
+
+## Operations worth knowing
+
+Reach these with `run_operation`; `describe_operation` gives the arguments.
+
+| Need | Operation |
+|---|---|
+| Copy an agent (same or another client) | `agents.duplicate` |
+| Prompt history / roll back | `agent_prompt_history.list`, `.get`, `.revert` |
+| Test an agent by chat | `agents.test_chat` |
+| Rewrite a prompt from an instruction | `agents.rewrite_prompt` (then save with `agents.update`) |
+| Pick a voice | `voice_library.list` |
+| Built-in tool catalog | `agent_tools.builtins` |
+| Calendars for booking | `calendars.list` |
+| Import / export contacts | `contacts.import` (csv_text or rows + fieldMapping), `contacts.export` |
+| Pause / resume the AI on a conversation | `conversations.toggle_ai` |
+| Bulk SMS / email (confirms) | `messages.bulk_sms`, `messages.bulk_email` |
+| Outbound call queue | `call_queue.list`, `.update`, `.bulk`, `.import` |
+| Workflow folders, duplicate, condition fields | `workflow_folders.*`, `workflows.duplicate`, `workflows.condition_fields` |
+| Workflow runs and errors | `workflow_executions.list`, `.list_all`, `.logs` |
+| Move or drop contacts waiting at a step | `workflow_steps.waiting`, `.advance`, `.remove` |
+| Email campaigns end to end | `email_campaign_steps.*`, `email_campaign_senders.*`, `email_campaign_enrollments.*`, `email_campaigns.launch`, `email_campaign_steps.send_test` |
+| Sending domains and senders | `email_domains.*`, `email_senders.verify` |
+| Tools (modules) | `modules.catalog`, `modules.*`, `module_config.*`, `module_schedule.*`, `module_runs.*` |
+| Connect an app (returns a sign-in link) | `apps.list`, `app_connections.create`, `app_connections.status` |
+| Phone numbers | `phone_numbers.search`, `phone_numbers.buy` (confirms), `phone_orders.*`, `caller_ids.*` |
+| Pipeline stages | `pipeline_stages.*` |
+| Websites | `websites.list`, `.get`, `.deployments`, `.publish`, `.revert` |
+| Billing | `billing.subscription`, `billing.plans`, `billing.portal` |
+
+Things deliberately not available here: wallet top-ups (they charge a saved
+card), 10DLC/toll-free registration and regulatory document uploads. Send
+the user to the dashboard for those.
 
 ## Slash commands available
 
 **Auth + context**
 - `/outbox-setup` — first-run guided setup (sign in + pick client + tour)
-- `/outbox-sign-in` — sign in with email + password
-- `/outbox-sign-out` — revoke the current session
+- `/outbox-sign-in` — check sign-in and explain the browser sign-in
+- `/outbox-sign-out` — sign out here, or disconnect another device
 - `/outbox-whoami` — show current context (active client, agency, auth source)
 - `/outbox-clients` — list accessible clients
 - `/outbox-use-client <name-or-id>` — switch the active client
+- `/outbox-new-client [name]` — add a client, blank or copied from another
 
 **Agents**
 - `/outbox-agents` — list agents in the active client
@@ -221,6 +289,7 @@ If a tool call fails with 401:
 - `/outbox-attach-tool <agent-id>` — attach tools from the platform library
 - `/outbox-clone-agent <id>` — pull an agent's config to local files for editing
 - `/outbox-push-agent` — push local edits back to Outbox
+- `/outbox-prompt-history <agent>` — prompt versions and roll back
 
 **Workflows + campaigns**
 - `/outbox-workflows` — list workflows
@@ -242,6 +311,7 @@ If a tool call fails with 401:
 **Resources**
 - `/outbox-senders` — list email senders
 - `/outbox-phones` — list phone numbers
+- `/outbox-import-contacts <file.csv> [tags]` — import contacts from a local CSV
 
 ## Skills (auto-trigger on natural language)
 

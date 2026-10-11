@@ -50,7 +50,7 @@ Once all inputs are confirmed, call `mcp__outbox__create_record` with
 
 If the user picked any built-in tools, attach each one after the agent is
 created — call `mcp__outbox__run_operation operation="agent_tools.create"`
-with body `{"agent_id": "<new-id>", "type": "builtin", "builtin_key":
+with `path_params={"agent_id": "<new-id>"}` and body `{"agent_id": "<new-id>", "type": "builtin", "builtin_key":
 "<key>", "is_async": true}`. For built-ins with config fields the user
 also wants pre-filled (e.g. a default pipeline for `create_opportunity`),
 defer to `/outbox-attach-tool <new-id>` rather than gathering them inline

@@ -29,8 +29,8 @@ Push edits from a previously cloned agent back to Outbox.
    tracked field changes).
 5. If `tools.json` changed, reconcile tools separately from the agent
    record — `update_record` on `agents` doesn't touch the tool list.
-   For each added or modified tool, call `agent_tools.create` (it
-   upserts when an `id` is supplied). For built-ins, the body is
+   For each added or modified tool, call `agent_tools.create` with
+   `path_params={"agent_id": "<id>"}` (it upserts when an `id` is supplied). For built-ins, the body is
    `{"agent_id": "<id>", "type": "builtin", "builtin_key": "<key>",
    "is_async": true, "config": {...}}` — don't send `name`,
    `description`, or `schema`; the backend fills those from the

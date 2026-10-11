@@ -18,8 +18,9 @@ can edit it as files.
    `record_id="$ARGUMENTS"`.
 2. Call `mcp__outbox__run_operation` with `operation="agent_tools.list"`
    and `path_params={agent_id: "$ARGUMENTS"}` to fetch the agent's tool list.
-3. Call `mcp__outbox__run_operation` with `operation="agent_files.list"`
-   for the file list (filenames only — don't fetch contents unless asked).
+3. The agent record from step 1 already lists its knowledge files. Note
+   their names only; fetch one's text with `operation="agent_files.get"`
+   and `path_params={file_id: "<id>"}` only if asked.
 
 ### Write to disk
 

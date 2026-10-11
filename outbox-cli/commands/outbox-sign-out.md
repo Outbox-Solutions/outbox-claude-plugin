@@ -1,51 +1,31 @@
 ---
-description: Sign out — revoke the current Outbox session token
+description: Sign out of Outbox, or disconnect another device
 ---
 
-Revoke the user's current session and remove the token from their shell
-profile.
+There are two kinds of sign-out. Ask which one only if it isn't obvious.
 
-### Step 1 — revoke server-side
+### Sign out of this Claude Code
 
-Call the logout endpoint with the current token. Read the token from
-`~/.outbox/credentials.json` first (primary), then fall back to
-`$OUTBOX_TOKEN` env var if the file isn't there.
+Tell the user:
 
-```
-POST https://api.theaiagentshub.com/auth/plugin/logout/
-Authorization: Bearer <token>
-```
+> Run `/mcp`, choose **plugin:outbox-cli:outbox** and select **Clear
+> authentication**. Outbox tools stop working here until you
+> **Authenticate** again.
 
-This is idempotent — a 204 response is success regardless of whether the
-token was active. Don't worry if it's already revoked.
+### Disconnect another device or app
 
-### Step 2 — remove from credentials file
+1. Call `mcp__outbox__run_operation operation="plugin_sessions.list"`.
+2. Show a compact table: app (`label`), kind, last used, connected — newest
+   first. Mark nothing as "this one"; you can't tell which row is this
+   session.
+3. When they pick one, call `mcp__outbox__run_operation
+   operation="plugin_sessions.revoke" path_params={"session_id": "<id>"}`.
+   It comes back with `needs_confirmation` and a `confirm_token`. Tell them
+   which app will be disconnected, wait for a yes, then repeat the call with
+   the same arguments plus `confirm_token`.
 
-```bash
-rm -f ~/.outbox/credentials.json
-```
+If they revoke the session this Claude Code is using, the next tool call
+fails; they sign in again with `/outbox-sign-in`.
 
-### Step 3 — remove from shell profile
-
-1. Detect the user's shell rc file (zsh/bash/fish — same logic as
-   `/outbox-sign-in`).
-2. Use `Edit` to remove the `export OUTBOX_TOKEN="…"` line (and any
-   accompanying comment line if present).
-3. Confirm:
-
-   > Signed out. The session has been revoked on Outbox and removed from
-   > `~/.outbox/credentials.json` + `<rc-file>`. Run `/outbox-sign-in`
-   > again any time to sign back in.
-
-### Step 4 — note about active session
-
-The MCP server's JWT cache may briefly hold a valid access token (~30s
-remaining at most) for the just-revoked session. Subsequent tool calls
-will fail with 401 within that window. Run `/reload-plugins` to drop the
-MCP connection and force a re-handshake with no credentials.
-
-### Guardrails
-
-- Don't print the old token anywhere.
-- Don't try to delete other env vars that look related (e.g. legacy
-  `OUTBOX_API_KEY`) unless the user asks.
+Changing the Outbox password also disconnects every app. They can also
+manage connections in the dashboard under **Settings → Claude & Codex**.
